@@ -1,13 +1,8 @@
 package agent;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
-import java.util.Random;
-import java.util.Scanner;
+import java.io.*;
+import java.net.*;
+import java.util.*;
 
 class Server implements Runnable{
 	
@@ -24,29 +19,51 @@ class Server implements Runnable{
 	
 	@Override
 	public void run() {
+      Random rand = new Random();
 		if(running) {
 			server = a.createServer();
 			try {
 				server.setSoTimeout(5000);
+              
 				System.out.println("Wait for connection "+ a.names[0]+" with " + server.getLocalPort());
-				s = server.accept();
+			
+              	s = server.accept();
+              
+              	Scanner sc      = new Scanner(s.getInputStream(), "utf-8");
+				PrintWriter pw  = new PrintWriter(s.getOutputStream());
 				System.out.println("Accept "+ a.names[0] + " with "+ server.getLocalPort());
+              
+              	pw.println(sendName());// 1. A szerver elküldi az álnevei közül az egyiket véletlenszerűen.
+              	if(sc.nextInt() == a.agency){//2.Szerver fogadja
+                  	pw.println("OK");//4.Különben a szerver elküldi az OK szöveget.
+                  		if(sc.nextInt() == "OK"){
+                          pw.println(a.sendSecret());//5.majd mindketten elküldenek egy-egy titkos szöveget a másiknak, amit ismernek
+                          sec = sc.nextLine();
+                          
+                          a.close(s,sc,pw);//5. és ezután bontják a kapcsolatot
+                        }
+                }else{
+                  	a.close(s,sc,pw);//3.Ha a kliens tévedett, akkor a szerver bontja a kapcsolatot.
+                }
 				
 				running=false;
 			} catch (SocketException e) {
 				System.out.println("TimeOut "+ a.names[0]);
-			} catch (IOException e) {System.out.println("random IOEx"); }
+              
+			} catch (IOException e) {
+              	System.out.println("random IOEx"); 
+            }
 			finally {
 				try {
 					server.close();
 				} catch (IOException e) {}
 			}
-			run();
+			run(); //restart
 		}
 		
 	}
 	
-	public String sendName(PrintWriter serPw) {
+	public String sendName() {
 		Random rand = new Random();
 		return a.names[rand.nextInt(a.names.length)];
 	}
